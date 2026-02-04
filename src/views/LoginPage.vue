@@ -1,6 +1,9 @@
 <script setup>
 import { ref, reactive } from 'vue'
+import { supabase } from '../supabase'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 // 表單資料
 const loginForm = reactive({
     email: '',
@@ -12,7 +15,7 @@ const loginForm = reactive({
 const showPassword = ref(false)
 
 // 登入邏輯 (目前僅作 Console 顯示)
-function handleLogin() {
+async function handleLogin() {
     if (!loginForm.email || !loginForm.password) {
         alert("請輸入電子郵件與密碼")
         return
@@ -21,7 +24,16 @@ function handleLogin() {
         email: loginForm.email,
         password: loginForm.password
     })
-    // 這裡未來會接 API
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginForm.email,
+        password: loginForm.password,
+    })
+    if (error) {
+        alert("登入失敗: " + error.message)
+    } else {
+        alert("登入成功！")
+        router.push('/todo')
+    }
 }
 </script>
 
