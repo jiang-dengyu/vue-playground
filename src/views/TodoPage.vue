@@ -1,5 +1,6 @@
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { supabase } from '../supabase'
 
 // --- 資料狀態 ---
 const newTodo = ref("")
@@ -7,41 +8,79 @@ const searchingTarget = ref("")
 const currentUser = ref("管理者") // 模擬當前使用者身分
 
 const listItems = reactive({
-    todos: [
-        { id: 1, title: "學習 PostgreSQL 語法", is_completed: false, created_at: "2024-05-20" },
-        { id: 2, title: "完成 Vue 元件改版", is_completed: true, created_at: "2024-05-21" }
-    ]
+    todos: []
+})
+
+// --- 生命週期：初始化 ---
+onMounted(() => {
+    fetchTodos()
+    // 這裡可以順便檢查 Supabase 的 Auth 狀態來設定 currentUser
 })
 
 // --- 方法 ---
+// 讀取資料
+async function fetchTodos() {
+    const { data, error } = await supabase
+        .from('todos') // 確保你的 Supabase 資料表名稱是 todos
+        .select('*')
+        .order('id', { ascending: true })
 
+    if (error) {
+        console.error('抓取資料失敗:', error.message)
+    } else {
+        listItems.todos = data
+        currentUser.value = "已連線使用者" // 這裡之後可以換成 auth.user()
+    }
+}
 // 新增待辦事項
-function addListItem() {
-    if (newTodo.value.trim() !== "") {
-        const nextId = listItems.todos.length > 0 
-            ? Math.max(...listItems.todos.map(t => t.id)) + 1 
-            : 1;
-            
-        listItems.todos.push({
-            id: nextId,
-            title: newTodo.value,
-            is_completed: false,
-            created_at: new Date().toLocaleDateString()
-        })
+async function addListItem() {
+    if (newTodo.value.trim() === "") return
+
+    // 注意：ID 通常由資料庫自動產生，所以不傳送 ID
+    const { data, error } = await supabase
+        .from('todos')
+        .insert([{ 
+            title: newTodo.value, 
+            is_completed: false 
+            // 如果有 user_id 欄位，記得加上：user_id: user.id 
+        }])
+        .select() // 回傳新增的資料
+
+    if (error) {
+        alert('新增失敗: ' + error.message)
+    } else {
+        listItems.todos.push(data[0]) // 將回傳的新物件推入 UI
         newTodo.value = ""
     }
 }
 
 // 切換完成狀態
-function toggleStatus(todo) {
-    todo.is_completed = !todo.is_completed
+async function toggleStatus(todo) {
+    const nextStatus = !todo.is_completed
+    
+    const { error } = await supabase
+        .from('todos')
+        .update({ is_completed: nextStatus })
+        .eq('id', todo.id)
+
+    if (error) {
+        alert('更新失敗')
+    } else {
+        todo.is_completed = nextStatus
+    }
 }
 
 // 刪除項目
-function deleteItem(id) {
-    const index = listItems.todos.findIndex(t => t.id === id)
-    if (index !== -1) {
-        listItems.todos.splice(index, 1)
+async function deleteItem(id) {
+    const { error } = await supabase
+        .from('todos')
+        .delete()
+        .eq('id', id)
+
+    if (error) {
+        alert('刪除失敗')
+    } else {
+        listItems.todos = listItems.todos.filter(t => t.id !== id)
     }
 }
 
