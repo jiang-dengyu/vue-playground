@@ -1,4 +1,5 @@
 <script setup>
+import NavBar from '../components/NavBar.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { supabase } from '../supabase'
 
@@ -93,6 +94,7 @@ const filteredTodos = computed(() => {
 </script>
 
 <template>
+    <NavBar style="position: static; margin-bottom: 20px;" />
     <div class="todo-app-container">
         <header class="header">
             <h1>我的待辦清單</h1>
