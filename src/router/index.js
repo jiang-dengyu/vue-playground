@@ -4,6 +4,7 @@ import TodoPage from  '../views/TodoPage.vue'
 import LoginPage from  '../views/LoginPage.vue'
 import SignUpPage from  '../views/SignUpPage.vue'
 import ChaoJanPage from  '../views/ChaoJanPage.vue'
+import MemberListPage from  '../views/MemberListPage.vue'
 
 const routes = [
     {path:'/', redirect:'/login'},
@@ -11,6 +12,7 @@ const routes = [
     {path:'/login', component:LoginPage},
     {path:'/signup', component:SignUpPage},
     {path:'/chaojan', component:ChaoJanPage},
+    {path:'/memberlist', component:MemberListPage}
 ]
 
 const router = createRouter({
