@@ -1,7 +1,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { Search } from '@element-plus/icons-vue'
+import { Search, Download} from '@element-plus/icons-vue'
 import { supabase } from '../supabase'
+import * as XLSX from 'xlsx'
 import RegistrationAddDialog from '@/components/RegistrationAddDialog.vue'
 
 const tableData = ref([])
@@ -89,6 +90,59 @@ const getCategoryStyle = (cat) => {
   }
 }
 
+// 匯出功能
+const exportToExcel = () => {
+  if (tableData.value.length === 0) {
+    alert('目前畫面上沒有資料可以匯出')
+    return
+  }
+
+  // 整理要匯出的資料欄位 (對應資料庫與中文標題)
+  const excelData = tableData.value.map(item => ({
+    '年度': item.year,
+    '紙本單號': item.paper_ticket_no,
+    '報名者': item.applicant,
+    '報名項目': item.category,
+    '對象姓名': item.target_name,
+    '姓氏': item.last_name,
+    '關係': item.relationship,
+    '稱謂': item.title,
+    '男': item.male_count,
+    '女': item.female_count,
+    '生日': item.birthday,
+    '忌日': item.death_date,
+    '金銀紙': item.joss_paper_count,
+    '乾糧': item.dry_food_count,
+    '熟食': item.cooked_food_count,
+    '組織單位': item.organization,
+    '金額': item.amount,
+    '國內外': item.is_overseas ? '國外' : '國內',
+    '通訊地址': item.address
+  }))
+
+  // 建立工作表
+  const worksheet = XLSX.utils.json_to_sheet(excelData)
+  
+  // 設定欄位寬度 (可選，讓地址欄寬一點)
+  const wscols = [
+    { wch: 6 },  // 年度
+    { wch: 10 }, // 單號
+    { wch: 12 }, // 報名者
+    { wch: 15 }, // 項目
+    { wch: 12 }, // 對象
+    { wch: 30 }, // 地址 (設寬一點)
+  ]
+  worksheet['!cols'] = wscols
+
+  // 建立工作簿並下載
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, "報名名單")
+  
+  // 檔名範例：法會報名名單_2026-02-12.xlsx
+  const today = new Date().toISOString().split('T')[0]
+  XLSX.writeFile(workbook, `法會報名名單_${today}.xlsx`)
+}
+
 onMounted(() => fetchData())
 </script>
 
@@ -117,6 +171,10 @@ onMounted(() => fetchData())
         </el-select>
 
         <el-button type="primary" @click="fetchData">搜尋資料</el-button>
+      <el-button type="warning" @click="exportToExcel">
+        <el-icon style="margin-right: 5px;"><Download /></el-icon>
+        匯出 Excel
+      </el-button>
       </div>
 
       <div class="tool-group">
