@@ -8,6 +8,7 @@ const dialogVisible = ref(false)
 const submitting = ref(false)
 const formRef = ref(null)
 
+// 下拉選項
 const categoryOptions = ['九玄七祖', '互解冤親債主', '本靈', '因果業力', '地基主', '赤靈子', '冤親債主', '動物靈子', '累世九玄七祖', '累世因果業力', '累世赤靈子', '累世冤親債主', '累世動物靈子', '累世歷代祖先', '歷代九玄七祖', '歷代祖先']
 const relOptions = ['夫妻', '父母', '兒女', '公公', '婆婆', '岳父', '岳母', '親戚', '朋友']
 const titleOptions = ['父', '母', '祖父', '祖母', '曾祖父', '曾祖母', '曾曾祖父', '曾曾祖母', '外祖父', '外祖母', '外曾祖父', '外曾祖母', '外曾曾祖父', '外曾曾祖母']
@@ -37,6 +38,37 @@ const form = reactive({
   address: ''
 })
 
+// 會員查詢邏輯
+const querySearch = async (queryString, cb) => {
+  if (!queryString) return cb([]);
+  try {
+    const { data, error } = await supabase
+      .from('members')
+      .select('name, address_1, address_2, lunar_birthday, is_overseas, overseas_address')
+      .ilike('name', `%${queryString}%`)
+      .limit(15);
+
+    if (error) throw error;
+
+    const results = data.map(m => ({
+      ...m,
+      value: m.name,
+      full_address: m.is_overseas ? m.overseas_address : `${m.address_1 || ''}${m.address_2 || ''}`
+    }));
+    cb(results);
+  } catch (err) {
+    console.error('搜尋會員失敗:', err);
+    cb([]);
+  }
+};
+
+// 選擇會員後自動填入
+const handleSelectMember = (item) => {
+  form.applicant = item.name;
+  form.address = item.full_address;
+  form.birthday = item.lunar_birthday || '';
+};
+
 const rules = {
   paper_ticket_no: [{ required: true, message: '必選', trigger: 'change' }],
   applicant: [{ required: true, message: '必填', trigger: 'blur' }],
@@ -46,7 +78,7 @@ const rules = {
 }
 
 const resetForm = () => {
-  if (formRef.value) formRef.value.resetFields()
+  if (formRef.value) formRef.value.resetFields();
 }
 
 const submitForm = async () => {
@@ -100,11 +132,26 @@ const submitForm = async () => {
               </el-select>
             </el-form-item>
           </el-col>
+          
           <el-col :span="6">
             <el-form-item label="報名者" prop="applicant">
-              <el-input v-model="form.applicant" placeholder="姓名" />
+              <el-autocomplete
+                v-model="form.applicant"
+                :fetch-suggestions="querySearch"
+                clearable
+                placeholder="輸入姓名搜尋會員"
+                @select="handleSelectMember"
+              >
+                <template #default="{ item }">
+                  <div class="search-item">
+                    <span class="search-name">{{ item.name }}</span>
+                    <span class="search-addr">{{ item.full_address }}</span>
+                  </div>
+                </template>
+              </el-autocomplete>
             </el-form-item>
           </el-col>
+
           <el-col :span="6">
             <el-form-item label="國內外">
               <el-select v-model="form.is_overseas">
@@ -239,7 +286,6 @@ const submitForm = async () => {
 </template>
 
 <style scoped>
-/* 橫向擴增與字體優化 */
 .custom-form :deep(.el-form-item__label) {
   font-size: 15px;
   font-weight: bold;
@@ -248,27 +294,36 @@ const submitForm = async () => {
 
 .custom-form :deep(.el-input__inner),
 .custom-form :deep(.el-textarea__inner),
-.custom-form :deep(.el-select) {
+.custom-form :deep(.el-select),
+.custom-form :deep(.el-autocomplete) {
   font-size: 16px;
-}
-
-.el-divider--horizontal {
-  margin: 20px 0 15px 0;
+  width: 100%;
 }
 
 .el-divider__text {
   font-size: 16px;
   font-weight: bold;
-  color: #e67e22; /* 改用亮橘色區分區塊 */
+  color: #e67e22;
+}
+
+/* 搜尋清單樣式 */
+.search-item {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.4;
+  padding: 5px 0;
+}
+.search-name {
+  font-weight: bold;
+  color: #409eff;
+}
+.search-addr {
+  font-size: 12px;
+  color: #999;
 }
 
 .dialog-footer {
   text-align: right;
   padding-top: 10px;
-}
-
-/* 讓 TextArea 看起來更清楚 */
-:deep(.el-textarea__inner) {
-  background-color: #f9f9f9;
 }
 </style>
