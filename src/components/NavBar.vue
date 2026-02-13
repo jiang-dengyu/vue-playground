@@ -41,6 +41,9 @@ const navigateTo = (path) => {
                 <div class="menu-item" @click="navigateTo('/todo')">
                     <span class="menu-icon">📝</span> 待辦清單 (Todo)
                 </div>
+                <div class="menu-item" @click="navigateTo('/chatroom')">
+                    <span class="menu-icon">💬</span> 聊天室 (Chat Room)
+                </div>
                 <div class="menu-item disabled">
                     <span class="menu-icon">👤</span> 個人設定 (尚未開放)
                 </div>
