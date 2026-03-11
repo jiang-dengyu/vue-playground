@@ -4,11 +4,18 @@ import { Search, Download} from '@element-plus/icons-vue'
 import { supabase } from '../supabase'
 import * as XLSX from 'xlsx'
 import RegistrationAddDialog from '@/components/RegistrationAddDialog.vue'
-
+import { exportRawData } from '@/utils/excelExport' // 引入匯出工具
 const tableData = ref([])
 const loading = ref(false)
 const searchKeyword = ref('')
-const filterYear = ref('')
+const filterCategory = ref('')
+
+// 報名項目清單 (用於篩選選單)
+const categoryOptions = [
+  '九玄七祖', '互解冤親債主', '本靈', '因果業力', '地基主', '赤靈子', '冤親債主', '動物靈子', 
+  '累世九玄七祖', '累世因果業力', '累世赤靈子', '累世冤親債主', '累世動物靈子', '累世歷代祖先', 
+  '歷代九玄七祖', '歷代祖先','其他'
+]
 
 // 抓取資料並執行排序 (1. 單號 2. 報名者 3. 項目)
 const fetchData = async () => {
@@ -21,7 +28,11 @@ const fetchData = async () => {
       .order('applicant', { ascending: true })
       .order('category', { ascending: true })
 
-    if (filterYear.value) query = query.eq('year', filterYear.value)
+    // 改為根據項目篩選
+    if (filterCategory.value) {
+      query = query.eq('category', filterCategory.value)
+    }
+
     if (searchKeyword.value) {
       query = query.or(`applicant.ilike.%${searchKeyword.value}%,target_name.ilike.%${searchKeyword.value}%,address.ilike.%${searchKeyword.value}%`)
     }
@@ -36,36 +47,48 @@ const fetchData = async () => {
   }
 }
 
+//匯出:
+// const handleExportAll = () => {
+//   exportByAddressGroup(tableData.value, '全部地址分組');
+// };
+const handleExportByCategory = () => {
+  if (!filterCategory.value) {
+    alert('請先選擇一個項目');
+    return;
+  }
+  exportRawData(tableData.value, `項目_${filterCategory.value}`);
+};
+
 const totalAmount = computed(() => {
   return tableData.value.reduce((sum, item) => sum + Number(item.amount), 0)
 })
 
-const getTagType = (cat) => {
-  if (cat.includes('祖先')) return ''
-  if (cat.includes('冤親')) return 'warning'
-  return 'info'
-}
+// const getTagType = (cat) => {
+//   if (cat.includes('祖先')) return ''
+//   if (cat.includes('冤親')) return 'warning'
+//   return 'info'
+// }
 // 定義項目顏色對應表 (背景色, 文字顏色)
 const categoryColors = {
-  '九玄七祖': { bg: '#E3F2FD', text: '#1976D2' },    // 藍色
+  '九玄七祖': { bg: '#E3F2FD', text: '#c4c106' },    // 淺綠色
+  '歷代九玄七祖': { bg: '#E3F2FD', text: '#969405' },
   '歷代祖先': { bg: '#E3F2FD', text: '#1976D2' },    // 藍色系
-  '歷代九玄七祖': { bg: '#E3F2FD', text: '#1976D2' },
-  '累世歷代祖先': { bg: '#E3F2FD', text: '#1976D2' },
+  '累世歷代祖先': { bg: '#E3F2FD', text: '#a9dcf5' },
   
   '冤親債主': { bg: '#FFF3E0', text: '#E65100' },    // 橘色
-  '累世冤親債主': { bg: '#FFF3E0', text: '#E65100' },
-  '互解冤親債主': { bg: '#FFEBEE', text: '#C62828' }, // 深紅
+  '累世冤親債主': { bg: '#FFF3E0', text: '#f7c78f' },
+  '互解冤親債主': { bg: '#FFEBEE', text: '#baafa2' }, // 深紅
   
   '因果業力': { bg: '#F3E5F5', text: '#7B1FA2' },    // 紫色
-  '累世因果業力': { bg: '#F3E5F5', text: '#7B1FA2' },
+  '累世因果業力': { bg: '#F3E5F5', text: '#dbacfa' },
   
   '本靈': { bg: '#E8F5E9', text: '#2E7D32' },        // 綠色
   '赤靈子': { bg: '#EFEBE9', text: '#5D4037' },      // 棕色
-  '累世赤靈子': { bg: '#EFEBE9', text: '#5D4037' },
+  '累世赤靈子': { bg: '#EFEBE9', text: '#80776e' },
   
-  '地基主': { bg: '#F9FBE7', text: '#827717' },      // 黃綠
-  '動物靈子': { bg: '#E0F7FA', text: '#00838F' },    // 青色
-  '累世動物靈子': { bg: '#E0F7FA', text: '#00838F' },
+  '地基主': { bg: '#F9FBE7', text: '#fc8381' },      // 黃綠
+  '動物靈子': { bg: '#E0F7FA', text: '#6afce9' },    // 青色
+  '累世動物靈子': { bg: '#E0F7FA', text: '#89c4bd' },
 }
 
 // 取得標籤樣式的函式
@@ -164,16 +187,20 @@ onMounted(() => fetchData())
           </template>
         </el-input>
 
-        <el-select v-model="filterYear" placeholder="年份" style="width: 130px" @change="fetchData">
-          <el-option label="所有年份" value="" />
-          <el-option label="2024 (甲辰)" value="2024" />
-          <el-option label="2025 (乙巳)" value="2025" />
+        <el-select v-model="filterCategory" placeholder="所有項目" style="width: 180px" clearable @change="fetchData">
+          <el-option label="所有項目" value="" />
+          <el-option v-for="opt in categoryOptions" :key="opt" :label="opt" :value="opt" />
         </el-select>
 
         <el-button type="primary" @click="fetchData">搜尋資料</el-button>
       <el-button type="warning" @click="exportToExcel">
         <el-icon style="margin-right: 5px;"><Download /></el-icon>
         匯出 Excel
+      </el-button>
+      <!-- <el-button type="danger" @click="handleExportAll">全部(地址匯出)</el-button> -->
+      <el-button type="warning" @click="handleExportByCategory">
+        <el-icon style="margin-right: 5px;"><Download /></el-icon>
+        依項目匯出 Excel
       </el-button>
       </div>
 
